@@ -12,23 +12,36 @@
       color: #ccc;
       font-family: system-ui, sans-serif;
     }
-    .hint {
+    .panel {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 2;
-      padding: 0.4rem 1rem 0.5rem;
-      background: rgba(0,0,0,0.75);
-      font-size: 0.85rem;
-      text-align: center;
+      inset: 0;
+      z-index: 10;
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
       justify-content: center;
-      gap: 0.6rem 1rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.55);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.15s ease, visibility 0.15s;
     }
-    .hint kbd { background: #333; padding: 0.1rem 0.4rem; border-radius: 3px; }
+    .panel.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .panel-inner {
+      background: #1e1e1e;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      max-width: min(90vw, 28rem);
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      font-size: 0.85rem;
+      color: #eee;
+    }
+    .panel-inner kbd { background: #333; padding: 0.1rem 0.35rem; border-radius: 3px; }
     .duration-row {
       display: inline-flex;
       align-items: center;
@@ -71,7 +84,6 @@
       font-variant-numeric: tabular-nums;
     }
     .gallery {
-      padding-top: 2.5rem;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -80,19 +92,21 @@
     .gallery figure {
       margin: 0;
       min-height: 100vh;
+      min-height: 100dvh;
       width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0.5rem;
+      padding: 0;
+      box-sizing: border-box;
     }
-    .gallery img {
-      max-width: 100%;
-      max-height: 100vh;
-      width: auto;
-      height: auto;
+    /* Always use a 90vw×90vh “slot” so even small files scale up to that fit. */
+    .gallery img,
+    .slideshow img {
+      width: 90vw;
+      height: 90vh;
       object-fit: contain;
-      vertical-align: middle;
+      object-position: center;
     }
     .slideshow {
       display: none;
@@ -100,18 +114,12 @@
       inset: 0;
       z-index: 1;
       background: #000;
-      align-items: center;
-      justify-content: center;
+      box-sizing: border-box;
     }
     .slideshow.is-on {
       display: flex;
-    }
-    .slideshow img {
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
-      object-fit: contain;
+      align-items: center;
+      justify-content: center;
     }
     .slideshow .counter {
       position: absolute;
@@ -123,27 +131,27 @@
     body.slideshow-active {
       overflow: hidden;
     }
-    body.slideshow-active .hint {
-      z-index: 3;
-    }
   </style>
 </head>
 <body>
-  <div class="hint">
-    <span><kbd>Space</kbd> — start / stop (loops)</span>
-    <label class="duration-row" for="duration">
-      <span>Duration</span>
-      <input
-        type="range"
-        id="duration"
-        min="1"
-        max="5"
-        step="0.1"
-        value="3.5"
-        aria-label="Seconds per image"
-      />
-      <span class="duration-value" id="durationValue" aria-hidden="true">3.5s</span>
-    </label>
+  <div class="panel" id="panel" aria-hidden="true">
+    <div class="panel-inner">
+      <p style="margin:0 0 0.6rem"><kbd>Space</kbd> — start / stop (loops)</p>
+      <p style="margin:0 0 0.75rem;opacity:0.9"><kbd>M</kbd> — show / hide this panel</p>
+      <label class="duration-row" for="duration">
+        <span>Duration</span>
+        <input
+          type="range"
+          id="duration"
+          min="1"
+          max="5"
+          step="0.1"
+          value="3.5"
+          aria-label="Seconds per image"
+        />
+        <span class="duration-value" id="durationValue" aria-hidden="true">3.5s</span>
+      </label>
+    </div>
   </div>
   <div class="gallery" id="gallery"></div>
   <div class="slideshow" id="slideshow" aria-hidden="true">
@@ -154,7 +162,8 @@
     (function () {
       var FIRST = 1;
       /* Highest N in pasted_imagesN.webp in this folder (update if you add files). */
-      var LAST = 77;
+      var LAST = 102;
+      var panel = document.getElementById("panel");
       var gallery = document.getElementById("gallery");
       var durationEl = document.getElementById("duration");
       var durationValue = document.getElementById("durationValue");
@@ -243,6 +252,11 @@
         else start();
       }
 
+      function togglePanel() {
+        var on = panel.classList.toggle("is-open");
+        panel.setAttribute("aria-hidden", on ? "false" : "true");
+      }
+
       durationEl.addEventListener("input", function () {
         syncDurationLabel();
         applyInterval();
@@ -250,6 +264,11 @@
       syncDurationLabel();
 
       document.addEventListener("keydown", function (e) {
+        if (e.code === "KeyM" || e.key === "m" || e.key === "M") {
+          e.preventDefault();
+          togglePanel();
+          return;
+        }
         if (e.code !== "Space" && e.key !== " ") return;
         e.preventDefault();
         toggle();
