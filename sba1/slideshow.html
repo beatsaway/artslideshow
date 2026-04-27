@@ -245,6 +245,10 @@
         document.body.classList.remove("slideshow-active");
         slideshow.classList.remove("is-on");
         slideshow.setAttribute("aria-hidden", "true");
+        var fig = gallery.children[index];
+        if (fig) {
+          fig.scrollIntoView({ block: "center", behavior: "auto" });
+        }
       }
 
       function toggle() {
