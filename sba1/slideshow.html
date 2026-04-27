@@ -138,6 +138,7 @@
     <div class="panel-inner">
       <p style="margin:0 0 0.6rem"><kbd>Space</kbd> — start / stop (loops)</p>
       <p style="margin:0 0 0.75rem;opacity:0.9"><kbd>M</kbd> — show / hide this panel</p>
+      <p style="margin:0 0 0.75rem;opacity:0.9"><kbd>,</kbd> / <kbd>.</kbd> — previous / next image</p>
       <label class="duration-row" for="duration">
         <span>Duration</span>
         <input
@@ -256,6 +257,19 @@
         else start();
       }
 
+      function goDelta(delta) {
+        index = (index + delta + paths.length) % paths.length;
+        if (running) {
+          showSlide();
+          applyInterval();
+        } else {
+          var fig = gallery.children[index];
+          if (fig) {
+            fig.scrollIntoView({ block: "center", behavior: "auto" });
+          }
+        }
+      }
+
       function togglePanel() {
         var on = panel.classList.toggle("is-open");
         panel.setAttribute("aria-hidden", on ? "false" : "true");
@@ -271,6 +285,16 @@
         if (e.code === "KeyM" || e.key === "m" || e.key === "M") {
           e.preventDefault();
           togglePanel();
+          return;
+        }
+        if (e.code === "Comma" || e.key === ",") {
+          e.preventDefault();
+          goDelta(-1);
+          return;
+        }
+        if (e.code === "Period" || e.key === ".") {
+          e.preventDefault();
+          goDelta(1);
           return;
         }
         if (e.code !== "Space" && e.key !== " ") return;
