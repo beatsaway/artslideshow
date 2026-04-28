@@ -190,6 +190,7 @@
       var index = 0;
       var running = false;
       var timer = null;
+      var rafSync = 0;
 
       function showSlide() {
         slideImg.src = paths[index];
@@ -270,6 +271,31 @@
         }
       }
 
+      function syncIndexFromScroll() {
+        if (running) return;
+        var centerY = window.innerHeight / 2;
+        var best = index;
+        var bestDistance = Infinity;
+        for (var i = 0; i < gallery.children.length; i++) {
+          var rect = gallery.children[i].getBoundingClientRect();
+          var figCenter = rect.top + rect.height / 2;
+          var distance = Math.abs(figCenter - centerY);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = i;
+          }
+        }
+        index = best;
+      }
+
+      function scheduleSyncIndexFromScroll() {
+        if (running || rafSync) return;
+        rafSync = requestAnimationFrame(function () {
+          rafSync = 0;
+          syncIndexFromScroll();
+        });
+      }
+
       function togglePanel() {
         var on = panel.classList.toggle("is-open");
         panel.setAttribute("aria-hidden", on ? "false" : "true");
@@ -280,6 +306,9 @@
         applyInterval();
       });
       syncDurationLabel();
+      window.addEventListener("scroll", scheduleSyncIndexFromScroll, { passive: true });
+      window.addEventListener("resize", scheduleSyncIndexFromScroll);
+      syncIndexFromScroll();
 
       document.addEventListener("keydown", function (e) {
         if (e.code === "KeyM" || e.key === "m" || e.key === "M") {
