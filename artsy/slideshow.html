@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Image slideshow</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #fff;
+      color: #333;
+      font-family: system-ui, sans-serif;
+    }
+    .panel {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.55);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.15s ease, visibility 0.15s;
+    }
+    .panel.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .panel-inner {
+      background: #1e1e1e;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      max-width: min(90vw, 28rem);
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      font-size: 0.85rem;
+      color: #eee;
+    }
+    .panel-inner kbd { background: #333; padding: 0.1rem 0.35rem; border-radius: 3px; }
+    .duration-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem 0.6rem;
+      font-size: 0.8rem;
+    }
+    .duration-row input[type="range"] {
+      width: 100px;
+      height: 3px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #444;
+      border-radius: 2px;
+      vertical-align: middle;
+    }
+    .duration-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #aaa;
+      cursor: pointer;
+    }
+    .duration-row input[type="range"]::-moz-range-track {
+      height: 3px;
+      background: #444;
+      border-radius: 2px;
+    }
+    .duration-row input[type="range"]::-moz-range-thumb {
+      width: 10px;
+      height: 10px;
+      border: none;
+      border-radius: 50%;
+      background: #aaa;
+      cursor: pointer;
+    }
+    .duration-value {
+      min-width: 2.2rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .gallery {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .gallery figure {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    /* Always use a 90vw×90vh “slot” so even small files scale up to that fit. */
+    .gallery img,
+    .slideshow img {
+      width: 90vw;
+      height: 90vh;
+      object-fit: contain;
+      object-position: center;
+    }
+    .slideshow {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: #fff;
+      box-sizing: border-box;
+    }
+    .slideshow.is-on {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slideshow .counter {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+    body.slideshow-active {
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel" id="panel" aria-hidden="true">
+    <div class="panel-inner">
+      <p style="margin:0 0 0.6rem"><kbd>Space</kbd> — start / stop (loops)</p>
+      <p style="margin:0 0 0.75rem;opacity:0.9"><kbd>M</kbd> — show / hide this panel</p>
+      <p style="margin:0 0 0.75rem;opacity:0.9"><kbd>,</kbd> / <kbd>.</kbd> — previous / next image</p>
+      <label class="duration-row" for="duration">
+        <span>Duration</span>
+        <input
+          type="range"
+          id="duration"
+          min="1"
+          max="5"
+          step="0.1"
+          value="3.5"
+          aria-label="Seconds per image"
+        />
+        <span class="duration-value" id="durationValue" aria-hidden="true">3.5s</span>
+      </label>
+    </div>
+  </div>
+  <div class="gallery" id="gallery"></div>
+  <div class="slideshow" id="slideshow" aria-hidden="true">
+    <img id="slideImg" src="" alt="" />
+    <span class="counter" id="counter"></span>
+  </div>
+  <script>
+    (function () {
+      var FIRST = 1;
+      /* Highest N in pasted_imagesN.webp in this folder (update if you add files). */
+      var LAST = 91;
+      var panel = document.getElementById("panel");
+      var gallery = document.getElementById("gallery");
+      var durationEl = document.getElementById("duration");
+      var durationValue = document.getElementById("durationValue");
+      var slideshow = document.getElementById("slideshow");
+      var slideImg = document.getElementById("slideImg");
+      var counter = document.getElementById("counter");
+
+      var paths = [];
+      for (var n = FIRST; n <= LAST; n++) {
+        paths.push("pasted_images" + n + ".webp");
+      }
+
+      paths.forEach(function (src, i) {
+        var fig = document.createElement("figure");
+        var img = document.createElement("img");
+        img.src = src;
+        img.loading = i < 3 ? "eager" : "lazy";
+        img.alt = "Image " + (i + 1);
+        fig.appendChild(img);
+        gallery.appendChild(fig);
+      });
+
+      var index = 0;
+      var running = false;
+      var timer = null;
+      var rafSync = 0;
+
+      function showSlide() {
+        slideImg.src = paths[index];
+        slideImg.alt = "Slide " + (index + 1) + " of " + paths.length;
+        counter.textContent = index + 1 + " / " + paths.length;
+      }
+
+      function getIntervalMs() {
+        return Math.round(parseFloat(durationEl.value) * 1000);
+      }
+
+      function formatDuration() {
+        var s = parseFloat(durationEl.value);
+        var t = s % 1 === 0 ? s.toFixed(0) : s.toFixed(1);
+        return t + "s";
+      }
+
+      function syncDurationLabel() {
+        durationValue.textContent = formatDuration();
+      }
+
+      function tick() {
+        index = (index + 1) % paths.length;
+        showSlide();
+      }
+
+      function applyInterval() {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        if (running) {
+          timer = setInterval(tick, getIntervalMs());
+        }
+      }
+
+      function start() {
+        if (running) return;
+        running = true;
+        document.body.classList.add("slideshow-active");
+        slideshow.classList.add("is-on");
+        slideshow.setAttribute("aria-hidden", "false");
+        showSlide();
+        applyInterval();
+      }
+
+      function stop() {
+        if (!running) return;
+        running = false;
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        document.body.classList.remove("slideshow-active");
+        slideshow.classList.remove("is-on");
+        slideshow.setAttribute("aria-hidden", "true");
+        var fig = gallery.children[index];
+        if (fig) {
+          fig.scrollIntoView({ block: "center", behavior: "auto" });
+        }
+      }
+
+      function toggle() {
+        if (running) stop();
+        else start();
+      }
+
+      function goDelta(delta) {
+        index = (index + delta + paths.length) % paths.length;
+        if (running) {
+          showSlide();
+          applyInterval();
+        } else {
+          var fig = gallery.children[index];
+          if (fig) {
+            fig.scrollIntoView({ block: "center", behavior: "auto" });
+          }
+        }
+      }
+
+      function syncIndexFromScroll() {
+        if (running) return;
+        var centerY = window.innerHeight / 2;
+        var best = index;
+        var bestDistance = Infinity;
+        for (var i = 0; i < gallery.children.length; i++) {
+          var rect = gallery.children[i].getBoundingClientRect();
+          var figCenter = rect.top + rect.height / 2;
+          var distance = Math.abs(figCenter - centerY);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = i;
+          }
+        }
+        index = best;
+      }
+
+      function scheduleSyncIndexFromScroll() {
+        if (running || rafSync) return;
+        rafSync = requestAnimationFrame(function () {
+          rafSync = 0;
+          syncIndexFromScroll();
+        });
+      }
+
+      function togglePanel() {
+        var on = panel.classList.toggle("is-open");
+        panel.setAttribute("aria-hidden", on ? "false" : "true");
+      }
+
+      durationEl.addEventListener("input", function () {
+        syncDurationLabel();
+        applyInterval();
+      });
+      syncDurationLabel();
+      window.addEventListener("scroll", scheduleSyncIndexFromScroll, { passive: true });
+      window.addEventListener("resize", scheduleSyncIndexFromScroll);
+      syncIndexFromScroll();
+
+      document.addEventListener("keydown", function (e) {
+        if (e.code === "KeyM" || e.key === "m" || e.key === "M") {
+          e.preventDefault();
+          togglePanel();
+          return;
+        }
+        if (e.code === "Comma" || e.key === ",") {
+          e.preventDefault();
+          goDelta(-1);
+          return;
+        }
+        if (e.code === "Period" || e.key === ".") {
+          e.preventDefault();
+          goDelta(1);
+          return;
+        }
+        if (e.code !== "Space" && e.key !== " ") return;
+        e.preventDefault();
+        toggle();
+      });
+    })();
+  </script>
+</body>
+</html>
+

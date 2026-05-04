@@ -1,0 +1,73 @@
+Image resize to max 1500 px (April 2026)
+========================================
+
+Goal
+----
+Keep slideshow WebP files from being larger than needed for on-screen use:
+if either width or height was greater than 1500 pixels, the image was scaled
+down in proportion so the longest side became 1500 pixels (the shorter side
+scales accordingly). Files that already fit within 1500x1500 were left
+unchanged (no re-save), to avoid extra quality loss.
+
+Folders processed
+-----------------
+- sba1
+- Op art
+- Surrealism
+
+Only files named like pasted_images*.webp in each folder were processed.
+
+Tooling
+-------
+Python 3 with Pillow (PIL), run once from the project root using a small
+temporary script (since removed). To run the same logic again, save the
+snippet under "Optional: repeat yourself" as a .py file and execute it.
+
+Algorithm (same as the script)
+------------------------------
+1. For each *.webp in the three folders above:
+2. Open the image and read width W and height H.
+3. If max(W, H) <= 1500: skip this file.
+4. Otherwise:
+   - Convert to RGBA if the source has transparency (RGBA, LA, or palette
+     with transparency); otherwise RGB for smaller output.
+   - Resize with Pillow's thumbnail((1500, 1500), LANCZOS). Thumbnail keeps
+     aspect ratio and ensures neither side exceeds 1500.
+   - Close the reader before writing, then overwrite the same .webp path.
+   - WebP encoder settings: quality=88, method=6 (same style as earlier
+     exports in this project).
+
+Results of the last run
+-----------------------
+- Resized: 39 images (longest side was brought down to 1500 px or less).
+- Skipped: 263 images (already within 1500 px on both dimensions).
+
+Optional: repeat yourself (minimal script)
+------------------------------------------
+Save as e.g. resize_max_1500.py next to this file, install Pillow
+(pip install pillow), then run: python resize_max_1500.py
+
+  from pathlib import Path
+  from PIL import Image
+
+  ROOT = Path(__file__).resolve().parent
+  for folder in [ROOT / "sba1", ROOT / "Op art", ROOT / "Surrealism"]:
+      for path in sorted(folder.glob("*.webp")):
+          im = Image.open(path)
+          im.load()
+          w, h = im.size
+          if max(w, h) <= 1500:
+              im.close()
+              continue
+          if im.mode in ("RGBA", "LA") or (
+              im.mode == "P" and "transparency" in im.info):
+              work = im.convert("RGBA")
+          else:
+              work = im.convert("RGB")
+          im.close()
+          work.thumbnail((1500, 1500), Image.Resampling.LANCZOS)
+          work.save(path, "WEBP", quality=88, method=6)
+          work.close()
+
+Slideshow HTML files (slideshow.html) did not need changes; they still
+reference the same filenames.

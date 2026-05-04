@@ -1,0 +1,13 @@
+{
+  "name": "slideshow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "convert:artsy": "node ./scripts/convert-artsy-to-webp.mjs",
+    "convert:colouring": "node ./scripts/convert-colouring-to-webp.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.34.3"
+  }
+}
+
