@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "convert:artsy": "node ./scripts/convert-artsy-to-webp.mjs",
-    "convert:colouring": "node ./scripts/convert-colouring-to-webp.mjs"
+    "convert:colouring": "node ./scripts/convert-colouring-to-webp.mjs",
+    "convert:ceramic_hollow": "node ./scripts/convert-ceramic-hollow-to-webp.mjs",
+    "resize:pasted-max900": "node ./scripts/resize-pasted-images-max-side.mjs"
   },
   "dependencies": {
     "sharp": "^0.34.3"
