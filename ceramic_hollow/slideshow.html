@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ceramic hollow slideshow</title>
+  <title>Ceramic Hollow — slideshow</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -100,7 +100,6 @@
       padding: 0;
       box-sizing: border-box;
     }
-    /* Always use a 90vw×90vh “slot” so even small files scale up to that fit. */
     .gallery img,
     .slideshow img {
       width: 90vw;
@@ -162,8 +161,16 @@
   <script>
     (function () {
       var FIRST = 1;
-      /* Highest N in pasted_imagesN.webp in this folder (update if you add files). */
-      var LAST = 140;
+      var pad = 3;
+      var LAST = 349;
+
+      var paths = [];
+      for (var k = FIRST; k <= LAST; k++) {
+        var key = k.toString();
+        while (key.length < pad) key = "0" + key;
+        paths.push("pasted_images" + key + ".webp");
+      }
+
       var panel = document.getElementById("panel");
       var gallery = document.getElementById("gallery");
       var durationEl = document.getElementById("duration");
@@ -171,11 +178,6 @@
       var slideshow = document.getElementById("slideshow");
       var slideImg = document.getElementById("slideImg");
       var counter = document.getElementById("counter");
-
-      var paths = [];
-      for (var n = FIRST; n <= LAST; n++) {
-        paths.push("pasted_images" + n + ".webp");
-      }
 
       paths.forEach(function (src, i) {
         var fig = document.createElement("figure");
@@ -334,4 +336,3 @@
   </script>
 </body>
 </html>
-
