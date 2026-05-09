@@ -56,7 +56,7 @@ Save as e.g. resize_max_1500.py next to this file, install Pillow
           im = Image.open(path)
           im.load()
           w, h = im.size
-          if max(w, h) <= 1500:
+          if max(w, h) <= 700:
               im.close()
               continue
           if im.mode in ("RGBA", "LA") or (
