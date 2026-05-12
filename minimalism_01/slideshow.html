@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Minimalism 01 — slideshow</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #fff;
+      color: #333;
+      font-family: system-ui, sans-serif;
+    }
+    .panel {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.55);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.15s ease, visibility 0.15s;
+    }
+    .panel.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .panel-inner {
+      background: #1e1e1e;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      max-width: min(90vw, 28rem);
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      font-size: 0.85rem;
+      color: #eee;
+    }
+    .panel-inner kbd { background: #333; padding: 0.1rem 0.35rem; border-radius: 3px; }
+    .duration-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem 0.6rem;
+      font-size: 0.8rem;
+    }
+    .duration-row input[type="range"] {
+      width: 100px;
+      height: 3px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #444;
+      border-radius: 2px;
+      vertical-align: middle;
+    }
+    .duration-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #aaa;
+      cursor: pointer;
+    }
+    .duration-row input[type="range"]::-moz-range-track {
+      height: 3px;
+      background: #444;
+      border-radius: 2px;
+    }
+    .duration-row input[type="range"]::-moz-range-thumb {
+      width: 10px;
+      height: 10px;
+      border: none;
+      border-radius: 50%;
+      background: #aaa;
+      cursor: pointer;
+    }
+    .duration-value {
+      min-width: 2.2rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .gallery {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .gallery figure {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    .gallery img,
+    .slideshow img {
+      width: 90vw;
+      height: 90vh;
+      object-fit: contain;
+      object-position: center;
+    }
+    .slideshow {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: #fff;
+      box-sizing: border-box;
+    }
+    .slideshow.is-on {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slideshow .counter {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+    body.slideshow-active {
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel" id="panel" aria-hidden="true">
+    <div class="panel-inner">
+      <p style="margin:0 0 0.6rem"><kbd>Space</kbd> — start / stop (loops)</p>
+      <p style="margin:0 0 0.75rem;opacity:0.9"><kbd>M</kbd> — show / hide this panel</p>
+      <p style="margin:0 0 0.75rem;opacity:0.9"><kbd>,</kbd> / <kbd>.</kbd> — previous / next image</p>
+      <label class="duration-row" for="duration">
+        <span>Duration</span>
+        <input
+          type="range"
+          id="duration"
+          min="1"
+          max="5"
+          step="0.1"
+          value="3.5"
+          aria-label="Seconds per image"
+        />
+        <span class="duration-value" id="durationValue" aria-hidden="true">3.5s</span>
+      </label>
+    </div>
+  </div>
+  <div class="gallery" id="gallery"></div>
+  <div class="slideshow" id="slideshow" aria-hidden="true">
+    <img id="slideImg" src="" alt="" />
+    <span class="counter" id="counter"></span>
+  </div>
+  <script>
+    (function () {
+      var paths = ["pasted_images1.webp","pasted_images2.webp","pasted_images3.webp","pasted_images4.webp","pasted_images5.webp","pasted_images6.webp","pasted_images7.webp","pasted_images8.webp","pasted_images9.webp","pasted_images10.webp","pasted_images11.webp","pasted_images12.webp","pasted_images13.webp","pasted_images14.webp","pasted_images15.webp","pasted_images16.webp","pasted_images17.webp","pasted_images18.webp","pasted_images19.webp","pasted_images20.webp","pasted_images21.webp","pasted_images22.webp","pasted_images23.webp","pasted_images24.webp","pasted_images25.webp","pasted_images26.webp","pasted_images27.webp","pasted_images28.webp","pasted_images29.webp","pasted_images30.webp","pasted_images31.webp","pasted_images32.webp","pasted_images33.webp","pasted_images34.webp","pasted_images35.webp","pasted_images36.webp","pasted_images37.webp","pasted_images38.webp","pasted_images39.webp","pasted_images40.webp","pasted_images41.webp","pasted_images42.webp","pasted_images43.webp","pasted_images44.webp","pasted_images45.webp","pasted_images46.webp","pasted_images47.webp","pasted_images48.webp","pasted_images49.webp","pasted_images50.webp","pasted_images51.webp","pasted_images52.webp","pasted_images53.webp","pasted_images54.webp","pasted_images55.webp","pasted_images56.webp","pasted_images57.webp","pasted_images58.webp","pasted_images59.webp","pasted_images60.webp","pasted_images61.webp","pasted_images62.webp","pasted_images63.webp","pasted_images64.webp","pasted_images65.webp","pasted_images66.webp","pasted_images67.webp","pasted_images68.webp","pasted_images69.webp","pasted_images70.webp","pasted_images71.webp","pasted_images72.webp","pasted_images73.webp","pasted_images74.webp","pasted_images75.webp","pasted_images76.webp","pasted_images77.webp","pasted_images78.webp","pasted_images79.webp","pasted_images80.webp","pasted_images81.webp","pasted_images82.webp","pasted_images83.webp","pasted_images84.webp","pasted_images85.webp","pasted_images86.webp","pasted_images87.webp","pasted_images88.webp","pasted_images89.webp","pasted_images90.webp","pasted_images91.webp","pasted_images92.webp","pasted_images93.webp","pasted_images94.webp","pasted_images95.webp","pasted_images96.webp","pasted_images97.webp","pasted_images98.webp","pasted_images99.webp","pasted_images100.webp","pasted_images101.webp","pasted_images102.webp","pasted_images103.webp","pasted_images104.webp","pasted_images105.webp","pasted_images106.webp","pasted_images107.webp","pasted_images108.webp","pasted_images109.webp","pasted_images110.webp","pasted_images111.webp","pasted_images112.webp","pasted_images113.webp","pasted_images114.webp","pasted_images115.webp","pasted_images116.webp","pasted_images117.webp","pasted_images118.webp","pasted_images119.webp","pasted_images120.webp","pasted_images121.webp","pasted_images122.webp","pasted_images123.webp","pasted_images124.webp","pasted_images125.webp","pasted_images126.webp","pasted_images127.webp","pasted_images128.webp","pasted_images129.webp","pasted_images130.webp","pasted_images131.webp","pasted_images132.webp","pasted_images133.webp","pasted_images134.webp","pasted_images135.webp","pasted_images136.webp","pasted_images137.webp","pasted_images138.webp","pasted_images139.webp","pasted_images140.webp","pasted_images141.webp","pasted_images142.webp","pasted_images143.webp","pasted_images144.webp","pasted_images145.webp","pasted_images146.webp","pasted_images147.webp","pasted_images148.webp","pasted_images149.webp","pasted_images150.webp","pasted_images151.webp","pasted_images152.webp","pasted_images153.webp","pasted_images154.webp","pasted_images155.webp","pasted_images156.webp","pasted_images157.webp","pasted_images158.webp","pasted_images159.webp","pasted_images160.webp","pasted_images161.webp","pasted_images162.webp","pasted_images163.webp","pasted_images164.webp","pasted_images165.webp","pasted_images166.webp","pasted_images167.webp","pasted_images168.webp","pasted_images169.webp","pasted_images170.webp","pasted_images171.webp","pasted_images172.webp","pasted_images173.webp","pasted_images174.webp","pasted_images175.webp","pasted_images176.webp","pasted_images177.webp","pasted_images178.webp","pasted_images179.webp","pasted_images180.webp","pasted_images181.webp","pasted_images182.webp","pasted_images183.webp","pasted_images184.webp","pasted_images185.webp","pasted_images186.webp","pasted_images187.webp","pasted_images188.webp","pasted_images189.webp","pasted_images190.webp","pasted_images191.webp","pasted_images192.webp","pasted_images193.webp","pasted_images194.webp","pasted_images195.webp","pasted_images196.webp","pasted_images197.webp","pasted_images198.webp","pasted_images199.webp","pasted_images200.webp","pasted_images201.webp","pasted_images202.webp","pasted_images203.webp","pasted_images204.webp","pasted_images205.webp","pasted_images206.webp","pasted_images207.webp","pasted_images208.webp","pasted_images209.webp","pasted_images210.webp","pasted_images211.webp","pasted_images212.webp","pasted_images213.webp","pasted_images214.webp","pasted_images215.webp","pasted_images216.webp","pasted_images217.webp","pasted_images218.webp","pasted_images219.webp","pasted_images220.webp","pasted_images221.webp","pasted_images222.webp","pasted_images223.webp","pasted_images224.webp","pasted_images225.webp","pasted_images226.webp","pasted_images227.webp","pasted_images228.webp","pasted_images229.webp","pasted_images230.webp","pasted_images231.webp","pasted_images232.webp","pasted_images233.webp","pasted_images234.webp","pasted_images235.webp","pasted_images236.webp","pasted_images237.webp","pasted_images238.webp","pasted_images239.webp","pasted_images240.webp","pasted_images241.webp","pasted_images242.webp","pasted_images243.webp","pasted_images244.webp","pasted_images245.webp","pasted_images246.webp","pasted_images247.webp","pasted_images248.webp","pasted_images249.webp","pasted_images250.webp","pasted_images251.webp","pasted_images252.webp","pasted_images253.webp","pasted_images254.webp","pasted_images255.webp","pasted_images256.webp","pasted_images257.webp","pasted_images258.webp","pasted_images259.webp","pasted_images260.webp","pasted_images261.webp","pasted_images262.webp","pasted_images263.webp","pasted_images264.webp","pasted_images265.webp","pasted_images266.webp","pasted_images267.webp","pasted_images268.webp","pasted_images269.webp","pasted_images270.webp","pasted_images271.webp","pasted_images272.webp","pasted_images273.webp","pasted_images274.webp","pasted_images275.webp","pasted_images276.webp","pasted_images277.webp","pasted_images278.webp","pasted_images279.webp","pasted_images280.webp","pasted_images281.webp","pasted_images282.webp","pasted_images283.webp","pasted_images284.webp","pasted_images285.webp","pasted_images286.webp","pasted_images287.webp","pasted_images288.webp","pasted_images289.webp","pasted_images290.webp","pasted_images291.webp","pasted_images292.webp","pasted_images293.webp","pasted_images294.webp","pasted_images295.webp","pasted_images296.webp","pasted_images297.webp","pasted_images298.webp","pasted_images299.webp","pasted_images300.webp","pasted_images301.webp","pasted_images302.webp","pasted_images303.webp","pasted_images304.webp","pasted_images305.webp","pasted_images306.webp","pasted_images307.webp","pasted_images308.webp","pasted_images309.webp","pasted_images310.webp","pasted_images311.webp","pasted_images312.webp","pasted_images313.webp","pasted_images314.webp","pasted_images315.webp","pasted_images316.webp","pasted_images317.webp","pasted_images318.webp","pasted_images319.webp","pasted_images320.webp","pasted_images321.webp","pasted_images322.webp","pasted_images323.webp","pasted_images324.webp","pasted_images325.webp","pasted_images326.webp","pasted_images327.webp","pasted_images328.webp","pasted_images329.webp","pasted_images330.webp","pasted_images331.webp","pasted_images332.webp","pasted_images333.webp","pasted_images334.webp","pasted_images335.webp","pasted_images336.webp","pasted_images337.webp","pasted_images338.webp","pasted_images339.webp","pasted_images340.webp","pasted_images341.webp","pasted_images342.webp","pasted_images343.webp","pasted_images344.webp","pasted_images345.webp","pasted_images346.webp","pasted_images347.webp","pasted_images348.webp","pasted_images349.webp","pasted_images350.webp","pasted_images351.webp","pasted_images352.webp","pasted_images353.webp","pasted_images354.webp","pasted_images355.webp","pasted_images356.webp","pasted_images357.webp","pasted_images358.webp","pasted_images359.webp","pasted_images360.webp","pasted_images361.webp","pasted_images362.webp","pasted_images363.webp","pasted_images364.webp","pasted_images365.webp","pasted_images366.webp","pasted_images367.webp","pasted_images368.webp","pasted_images369.webp","pasted_images370.webp","pasted_images371.webp","pasted_images372.webp","pasted_images373.webp","pasted_images374.webp","pasted_images375.webp","pasted_images376.webp","pasted_images377.webp","pasted_images378.webp","pasted_images379.webp","pasted_images380.webp","pasted_images381.webp","pasted_images382.webp","pasted_images383.webp","pasted_images384.webp","pasted_images385.webp","pasted_images386.webp","pasted_images387.webp","pasted_images388.webp","pasted_images389.webp","pasted_images390.webp","pasted_images391.webp","pasted_images392.webp"];
+      var panel = document.getElementById("panel");
+      var gallery = document.getElementById("gallery");
+      var durationEl = document.getElementById("duration");
+      var durationValue = document.getElementById("durationValue");
+      var slideshow = document.getElementById("slideshow");
+      var slideImg = document.getElementById("slideImg");
+      var counter = document.getElementById("counter");
+
+      paths.forEach(function (src, i) {
+        var fig = document.createElement("figure");
+        var img = document.createElement("img");
+        img.src = src;
+        img.loading = i < 3 ? "eager" : "lazy";
+        img.alt = "Image " + (i + 1);
+        fig.appendChild(img);
+        gallery.appendChild(fig);
+      });
+
+      var index = 0;
+      var running = false;
+      var timer = null;
+      var rafSync = 0;
+
+      function showSlide() {
+        slideImg.src = paths[index];
+        slideImg.alt = "Slide " + (index + 1) + " of " + paths.length;
+        counter.textContent = index + 1 + " / " + paths.length;
+      }
+
+      function getIntervalMs() {
+        return Math.round(parseFloat(durationEl.value) * 1000);
+      }
+
+      function formatDuration() {
+        var s = parseFloat(durationEl.value);
+        var t = s % 1 === 0 ? s.toFixed(0) : s.toFixed(1);
+        return t + "s";
+      }
+
+      function syncDurationLabel() {
+        durationValue.textContent = formatDuration();
+      }
+
+      function tick() {
+        index = (index + 1) % paths.length;
+        showSlide();
+      }
+
+      function applyInterval() {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        if (running) {
+          timer = setInterval(tick, getIntervalMs());
+        }
+      }
+
+      function start() {
+        if (running) return;
+        running = true;
+        document.body.classList.add("slideshow-active");
+        slideshow.classList.add("is-on");
+        slideshow.setAttribute("aria-hidden", "false");
+        showSlide();
+        applyInterval();
+      }
+
+      function stop() {
+        if (!running) return;
+        running = false;
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        document.body.classList.remove("slideshow-active");
+        slideshow.classList.remove("is-on");
+        slideshow.setAttribute("aria-hidden", "true");
+        var fig = gallery.children[index];
+        if (fig) {
+          fig.scrollIntoView({ block: "center", behavior: "auto" });
+        }
+      }
+
+      function toggle() {
+        if (running) stop();
+        else start();
+      }
+
+      function goDelta(delta) {
+        index = (index + delta + paths.length) % paths.length;
+        if (running) {
+          showSlide();
+          applyInterval();
+        } else {
+          var fig = gallery.children[index];
+          if (fig) {
+            fig.scrollIntoView({ block: "center", behavior: "auto" });
+          }
+        }
+      }
+
+      function syncIndexFromScroll() {
+        if (running) return;
+        var centerY = window.innerHeight / 2;
+        var best = index;
+        var bestDistance = Infinity;
+        for (var i = 0; i < gallery.children.length; i++) {
+          var rect = gallery.children[i].getBoundingClientRect();
+          var figCenter = rect.top + rect.height / 2;
+          var distance = Math.abs(figCenter - centerY);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = i;
+          }
+        }
+        index = best;
+      }
+
+      function scheduleSyncIndexFromScroll() {
+        if (running || rafSync) return;
+        rafSync = requestAnimationFrame(function () {
+          rafSync = 0;
+          syncIndexFromScroll();
+        });
+      }
+
+      function togglePanel() {
+        var on = panel.classList.toggle("is-open");
+        panel.setAttribute("aria-hidden", on ? "false" : "true");
+      }
+
+      durationEl.addEventListener("input", function () {
+        syncDurationLabel();
+        applyInterval();
+      });
+      syncDurationLabel();
+      window.addEventListener("scroll", scheduleSyncIndexFromScroll, { passive: true });
+      window.addEventListener("resize", scheduleSyncIndexFromScroll);
+      syncIndexFromScroll();
+
+      document.addEventListener("keydown", function (e) {
+        if (e.code === "KeyM" || e.key === "m" || e.key === "M") {
+          e.preventDefault();
+          togglePanel();
+          return;
+        }
+        if (e.code === "Comma" || e.key === ",") {
+          e.preventDefault();
+          goDelta(-1);
+          return;
+        }
+        if (e.code === "Period" || e.key === ".") {
+          e.preventDefault();
+          goDelta(1);
+          return;
+        }
+        if (e.code !== "Space" && e.key !== " ") return;
+        e.preventDefault();
+        toggle();
+      });
+    })();
+  </script>
+</body>
+</html>
