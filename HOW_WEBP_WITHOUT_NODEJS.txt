@@ -1,0 +1,89 @@
+Convert images to WebP (max 700 px) without Node.js
+====================================================
+
+Goal
+----
+Convert files like `pasted_images1.jpg` to `pasted_images1.webp` so the
+longest side is no more than 700 pixels, while keeping aspect ratio.
+
+This method uses only Windows PowerShell + libwebp CLI tools.
+
+Requirements (one-time)
+-----------------------
+1) Install libwebp tools with winget:
+
+   winget install --id Google.Libwebp -e --accept-package-agreements --accept-source-agreements
+
+2) Use this cwebp path (from winget install):
+
+   %LOCALAPPDATA%\Microsoft\WinGet\Packages\Google.Libwebp_Microsoft.Winget.Source_8wekyb3d8bbwe\libwebp-1.6.0-windows-x64\bin\cwebp.exe
+
+How to run (PowerShell)
+-----------------------
+1) Open PowerShell and go to your project root.
+
+2) Paste and run this script (edit $folderPath if needed):
+
+   $bin = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Google.Libwebp_Microsoft.Winget.Source_8wekyb3d8bbwe\libwebp-1.6.0-windows-x64\bin\cwebp.exe"
+   $folderPath = "C:\Users\tempteacher02\Desktop\artslideshow-main\traditional_art_nepal"
+   $max = 700
+
+   $shell = New-Object -ComObject Shell.Application
+   $folder = $shell.Namespace($folderPath)
+   if ($null -eq $folder) { throw "Shell namespace unavailable for $folderPath" }
+
+   $files = Get-ChildItem -Path $folderPath -File |
+     Where-Object { $_.Name -match '^pasted_images\d+\.(jpg|jpeg|png)$' } |
+     Sort-Object { [int]([regex]::Match($_.BaseName, '\d+').Value) }
+
+   $converted = 0
+   foreach ($f in $files) {
+     $item = $folder.ParseName($f.Name)
+     if ($null -eq $item) { throw "Shell item not found for $($f.Name)" }
+
+     $dims = [string]$item.ExtendedProperty('Dimensions')
+     $m = [regex]::Match($dims, '(\d+)\D+(\d+)')
+     if (-not $m.Success) { throw "Could not read dimensions for $($f.Name): '$dims'" }
+
+     $w = [int]$m.Groups[1].Value
+     $h = [int]$m.Groups[2].Value
+     $dest = [System.IO.Path]::ChangeExtension($f.FullName, '.webp')
+
+     if ([Math]::Max($w, $h) -le $max) {
+       & $bin -quiet -q 82 -m 6 "$($f.FullName)" -o "$dest"
+     } elseif ($w -ge $h) {
+       & $bin -quiet -q 82 -m 6 -resize $max 0 "$($f.FullName)" -o "$dest"
+     } else {
+       & $bin -quiet -q 82 -m 6 -resize 0 $max "$($f.FullName)" -o "$dest"
+     }
+
+     if ($LASTEXITCODE -ne 0) { throw "cwebp failed for $($f.Name)" }
+     $converted++
+   }
+
+   Write-Output "Converted $converted file(s)."
+
+Optional: verify all WebP files are <= 700
+-------------------------------------------
+Use webpinfo to check dimensions:
+
+   $info = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Google.Libwebp_Microsoft.Winget.Source_8wekyb3d8bbwe\libwebp-1.6.0-windows-x64\bin\webpinfo.exe"
+   $folder = "C:\Users\tempteacher02\Desktop\artslideshow-main\traditional_art_nepal"
+   $files = Get-ChildItem -Path $folder -File | Where-Object { $_.Name -match '^pasted_images\d+\.webp$' }
+   $tooBig = @()
+   foreach ($f in $files) {
+     $out = & $info "$($f.FullName)"
+     $wLine = $out | Select-String -Pattern '^\s*Width:\s*(\d+)'
+     $hLine = $out | Select-String -Pattern '^\s*Height:\s*(\d+)'
+     $w = [int]([regex]::Match($wLine.Line, '(\d+)').Groups[1].Value)
+     $h = [int]([regex]::Match($hLine.Line, '(\d+)').Groups[1].Value)
+     if ([Math]::Max($w, $h) -gt 700) { $tooBig += "$($f.Name): ${w}x${h}" }
+   }
+   "webp_count=$($files.Count)"
+   "oversized_count=$($tooBig.Count)"
+
+Notes
+-----
+- Source JPG/PNG files are kept; this creates matching .webp files.
+- If a .webp already exists with the same name, it will be overwritten.
+- The slideshow HTML can keep using names like `pasted_images1.webp`.
