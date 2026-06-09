@@ -15,6 +15,7 @@ Folders processed
 - Op art
 - Surrealism
 - cubismfaces
+- sliceoflife
 
 Only files named like pasted_images*.webp in each folder were processed.
 
@@ -52,7 +53,7 @@ Save as e.g. resize_max_700.py next to this file, install Pillow
 
   ROOT = Path(__file__).resolve().parent
   MAX = 700
-  for folder in [ROOT / "sba1", ROOT / "Op art", ROOT / "Surrealism", ROOT / "cubismfaces"]:
+  for folder in [ROOT / "sba1", ROOT / "Op art", ROOT / "Surrealism", ROOT / "cubismfaces", ROOT / "sliceoflife"]:
       for path in sorted(folder.glob("pasted_images*.webp")):
           im = Image.open(path)
           im.load()
